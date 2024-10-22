@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/mateuszromek/auth/internal/auth"
@@ -34,7 +34,6 @@ func (s *UserStore) CreateUser(ctx context.Context, email, username, password st
 		return nil, err
 	}
 
-	fmt.Println(hashedPassword, email, username, password)
 	query := `
 		INSERT INTO user_account (email, username, password_hash, salt)
 		VALUES (:email, :username, :password_hash, :salt)
@@ -47,7 +46,10 @@ func (s *UserStore) CreateUser(ctx context.Context, email, username, password st
 		Salt:         hashedPassword[0],
 	}
 
-	rows, err := s.db.NamedQuery(query, createUserPayload)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := s.db.NamedQueryContext(ctxWithTimeout, query, createUserPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -63,5 +65,29 @@ func (s *UserStore) CreateUser(ctx context.Context, email, username, password st
 		return &user, nil
 	}
 
+	return &user, nil
+}
+
+func (s *UserStore) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	query := `SELECT * FROM user_account WHERE email = $1`
+
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := s.db.QueryxContext(ctxWithTimeout, query, email)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var user User
+	if rows.Next() {
+		err = rows.StructScan(&user)
+		if err != nil {
+			return nil, err
+		}
+
+	}
 	return &user, nil
 }

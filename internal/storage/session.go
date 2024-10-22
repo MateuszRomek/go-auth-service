@@ -37,7 +37,10 @@ func (s *SessionStore) CreateSession(ctx context.Context, userId string) (*Sessi
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UnixMilli(),
 	}
 
-	rows, err := s.db.NamedQuery(query, session)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := s.db.NamedQueryContext(ctxWithTimeout, query, session)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +55,10 @@ func (s *SessionStore) GetUserSession(ctx context.Context, userId string) (*Sess
 		SELECT * FROM session WHERE user_id = $1
  		`
 
-	rows, err := s.db.Queryx(query, userId)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := s.db.QueryxContext(ctxWithTimeout, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +83,10 @@ func (s *SessionStore) GetSessionByToken(ctx context.Context, token string) (*Se
 		SELECT * FROM session WHERE id = $1
 	`
 
-	rows, err := s.db.Queryx(query, sessionId)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := s.db.QueryxContext(ctxWithTimeout, query, sessionId)
 	if err != nil {
 		return nil, err
 	}
