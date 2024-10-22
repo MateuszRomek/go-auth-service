@@ -9,9 +9,6 @@ DB_URL=user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) dbname=$(POSTGRES_DB)
 # Goose binary
 GOOSE=goose
 
-# Migrations directory TBD should we use env here
-MIGRATIONS_DIR=$(MIGRATIONS_DIR)
-
 # Goose commands
 .PHONY: migrate-up migrate-down migrate-reset migrate-status migrate-create
 
