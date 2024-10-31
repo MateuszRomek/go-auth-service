@@ -3,10 +3,8 @@
 CREATE TABLE user_account (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL UNIQUE,
-    username TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    email_verified INTEGER NOT NULL DEFAULT 0,
-    salt TEXT NOT NULL
+    email_verified INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX email_index ON user_account(email);

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -9,9 +10,9 @@ import (
 )
 
 type Session struct {
-	Id        string `db:"id"`
-	UserId    string `db:"user_id"`
-	ExpiresAt int64  `db:"expires_at"`
+	Id        string `db:"id" json:"id"`
+	UserId    string `db:"user_id" json:"user_id"`
+	ExpiresAt int64  `db:"expires_at" json:"expires_at"`
 }
 
 type SessionStore struct {
@@ -20,6 +21,7 @@ type SessionStore struct {
 
 func (s *SessionStore) CreateSession(ctx context.Context, userId string) (*Session, error) {
 	token, err := auth.GenerateSessionToken()
+	fmt.Println(userId, token)
 	if err != nil {
 		return nil, err
 	}

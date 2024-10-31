@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/mateuszromek/auth/internal/db"
 	"github.com/mateuszromek/auth/internal/storage"
@@ -44,9 +45,10 @@ func main() {
 	store := storage.NewStorage(db)
 
 	app := &application{
-		cfg:    cfg,
-		store:  store,
-		logger: logger,
+		cfg:       cfg,
+		store:     store,
+		logger:    logger,
+		validator: validator.New(validator.WithRequiredStructEnabled()),
 	}
 
 	r := app.NewRouter()
