@@ -92,16 +92,17 @@ func (s *UserStore) GetUserByEmail(ctx context.Context, email string) (*User, er
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var user User
-	if rows.Next() {
-		err = rows.StructScan(&user)
-		if err != nil {
-			return nil, err
-		}
-
+	if !rows.Next() {
+		return nil, errors.New("failed to create user")
 	}
+	var user User
+
+	err = rows.StructScan(&user)
+	if err != nil {
+		return nil, err
+	}
+
 	return &user, nil
 }

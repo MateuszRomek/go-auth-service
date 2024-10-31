@@ -31,11 +31,3 @@ func CreateSessionId(token string) string {
 
 	return session
 }
-
-// func ValidateSessionToken(ctx context.Context, token string) (Session, error) {
-
-// }
-
-// func InvalidateSession(ctx context.Context, sessionId string) error {
-
-// }

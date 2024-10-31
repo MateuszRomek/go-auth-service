@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -67,12 +68,14 @@ func (s *SessionStore) GetUserSession(ctx context.Context, userId string) (*Sess
 
 	defer rows.Close()
 
+	if !rows.Next() {
+		return nil, errors.New("failed to get session")
+	}
 	var session Session
-	if rows.Next() {
-		err := rows.StructScan(&session)
-		if err != nil {
-			return nil, err
-		}
+
+	err = rows.StructScan(&session)
+	if err != nil {
+		return nil, errors.New("failed to parse session")
 	}
 
 	return &session, nil
@@ -95,13 +98,28 @@ func (s *SessionStore) GetSessionByToken(ctx context.Context, token string) (*Se
 
 	defer rows.Close()
 
+	if !rows.Next() {
+		return nil, errors.New("failed to get session")
+	}
+
 	var session Session
-	if rows.Next() {
-		err := rows.StructScan(&session)
-		if err != nil {
-			return nil, err
-		}
+	err = rows.StructScan(&session)
+
+	if err != nil {
+		return nil, err
 	}
 
 	return &session, nil
 }
+
+// TODO
+// func (s *SessionStore) ValidateSessionToken(ctx context.Context, token string) error {
+// 	sessionId := auth.CreateSessionId(token)
+
+// 	query := `
+// 	SELECT id, user_id, expires_at
+// 	FROM session
+// 	WHERE id = $1
+// 	`
+
+// }
