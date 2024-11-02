@@ -7,15 +7,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-type SessionPayload struct {
-	UserId string `json:"user_id"`
-}
-
-type RegisterPayload struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-}
-
 func (app *application) NewRouter() *chi.Mux {
 	r := chi.NewRouter()
 
@@ -27,6 +18,9 @@ func (app *application) NewRouter() *chi.Mux {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/register", app.registerUserHandler)
+		r.Post("/login", app.loginUser)
+		r.Post("/logout", app.logoutUser)
+		r.Post("/validate", app.validateToken)
 	})
 
 	return r

@@ -8,9 +8,10 @@ import (
 
 type Storage struct {
 	Sessions interface {
-		CreateSession(ctx context.Context, userId string) (*Session, error)
-		GetUserSession(ctx context.Context, userId string) (*Session, error)
+		CreateSession(ctx context.Context, userId string) (*Session, string, error)
 		GetSessionByToken(ctx context.Context, token string) (*Session, error)
+		ValidateSessionByToken(ctx context.Context, token string) (*Session, string, error)
+		RemoveAllUserSessions(ctx context.Context, userId string) error
 	}
 	Users interface {
 		CreateUser(ctx context.Context, email, password string) (*User, error)

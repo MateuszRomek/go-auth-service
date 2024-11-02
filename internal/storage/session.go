@@ -20,11 +20,11 @@ type SessionStore struct {
 	db *sqlx.DB
 }
 
-func (s *SessionStore) CreateSession(ctx context.Context, userId string) (*Session, error) {
+func (s *SessionStore) CreateSession(ctx context.Context, userId string) (*Session, string, error) {
 	token, err := auth.GenerateSessionToken()
 	fmt.Println(userId, token)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	sessionId := auth.CreateSessionId(token)
@@ -45,47 +45,19 @@ func (s *SessionStore) CreateSession(ctx context.Context, userId string) (*Sessi
 
 	rows, err := s.db.NamedQueryContext(ctxWithTimeout, query, session)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	defer rows.Close()
 
-	return &session, nil
-}
-
-func (s *SessionStore) GetUserSession(ctx context.Context, userId string) (*Session, error) {
-	query := `
-		SELECT * FROM session WHERE user_id = $1
- 		`
-
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	rows, err := s.db.QueryxContext(ctxWithTimeout, query, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	if !rows.Next() {
-		return nil, errors.New("failed to get session")
-	}
-	var session Session
-
-	err = rows.StructScan(&session)
-	if err != nil {
-		return nil, errors.New("failed to parse session")
-	}
-
-	return &session, nil
+	return &session, token, nil
 }
 
 func (s *SessionStore) GetSessionByToken(ctx context.Context, token string) (*Session, error) {
 	sessionId := auth.CreateSessionId(token)
 
 	query := `
-		SELECT * FROM session WHERE id = $1
+		SELECT * FROM session WHERE id = $1 LIMIT 1
 	`
 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -112,14 +84,93 @@ func (s *SessionStore) GetSessionByToken(ctx context.Context, token string) (*Se
 	return &session, nil
 }
 
-// TODO
-// func (s *SessionStore) ValidateSessionToken(ctx context.Context, token string) error {
-// 	sessionId := auth.CreateSessionId(token)
+func (s *SessionStore) ValidateSessionByToken(ctx context.Context, token string) (*Session, string, error) {
+	sessionId := auth.CreateSessionId(token)
 
-// 	query := `
-// 	SELECT id, user_id, expires_at
-// 	FROM session
-// 	WHERE id = $1
-// 	`
+	query := `
+	SELECT id, user_id, expires_at
+	FROM session
+	WHERE id = $1
+	`
 
-// }
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := s.db.QueryxContext(ctxWithTimeout, query, sessionId)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if !rows.Next() {
+		return nil, "", errors.New("no session for provided token")
+	}
+
+	var session Session
+	err = rows.StructScan(&session)
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	now := time.Now().UnixMilli()
+
+	if now >= session.ExpiresAt {
+		deleteQuery := `
+		 DELETE FROM session WHERE id = $1
+		`
+
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		_, err := s.db.ExecContext(ctxWithTimeout, deleteQuery, session.Id)
+
+		if err != nil {
+			return nil, "", errors.New("failed to remove expired session")
+		}
+
+		return nil, "", errors.New("token expired")
+	}
+
+	newExpiresAt := time.Now().Add(7 * 24 * time.Hour).UnixMilli()
+	updateQuery := `
+	  UPDATE session SET expires_at = $1 WHERE id = $2 
+		RETURNING id, user_id, expires_at
+	`
+
+	ctxWithTimeout, cancel = context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err = s.db.QueryxContext(ctxWithTimeout, updateQuery, newExpiresAt, session.Id)
+
+	if err != nil {
+		return nil, "", errors.New("failed to extend query")
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, "", errors.New("no session found")
+	}
+
+	var updatedSession Session
+	err = rows.StructScan(&updatedSession)
+	if err != nil {
+		return nil, "", errors.New("failed to scan updated session")
+	}
+
+	return &updatedSession, token, nil
+}
+
+func (s *SessionStore) RemoveAllUserSessions(ctx context.Context, userId string) error {
+	query := `
+	DELETE FROM session
+	WHERE user_id = $1
+	`
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := s.db.ExecContext(ctxWithTimeout, query, userId)
+	if err != nil {
+		return errors.New("failed to remove user sessions")
+	}
+
+	return nil
+}
