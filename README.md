@@ -53,4 +53,3 @@ air
 - `POST /register` - Register a new user
 - `POST /login` - Login user
 - `POST /logout` - Logout user
-- `GET /me` - Get current user information
